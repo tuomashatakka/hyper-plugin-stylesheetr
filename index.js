@@ -42,7 +42,7 @@ async function watchStylesheet (path) {
   path = relativePath(path)
   const { watch } = require('fs')
 
-  return watch(path, (...args) => {
+  return watch(path, ( => {
     console.log("Reloading stylesheet in", path)
     decorateCustomCSS(path)
   })
@@ -61,7 +61,6 @@ async function decorateCustomCSS (stylesheetPath) {
 
   let css = await read(stylesheetPath)
   let el  = stylesheet('user-defined-styles', css)
-  console.log(el)
   document.body.append(el)
 
 }
