@@ -1,10 +1,15 @@
 
+const less = require('less')
+const os   = require('os')
+
+
 function toRules (rules={}) {
   return Object
     .keys(rules)
     .map(attr => `${attr}: ${rules[attr]}`)
     .join(';\n')
 }
+
 
 function stylesheet (name, rules) {
   let cls = '.' + name
@@ -20,6 +25,7 @@ function stylesheet (name, rules) {
   return el
 }
 
+
 function applyFrameStyle (el) {
   setTimeout(() => {
     let iframe = document.querySelector('iframe')
@@ -28,23 +34,40 @@ function applyFrameStyle (el) {
   }, 2000)
 }
 
+
 function relativePath (path) {
   const { resolve } = require('path')
-  return resolve(__dirname, path)
+  window.os = os
+  return resolve(os.homedir(), path)
+  // return resolve(__dirname, path)
 }
 
-async function read (path) {
-  const { readFileSync } = require('fs')
-  return readFileSync(relativePath(path), 'utf-8')
+
+async function read (...paths) {
+  const { readFileSync, existsSync } = require('fs')
+  let path
+  while (paths.length) {
+    path = relativePath(paths.shift())
+    if (existsSync(path))
+      return readFileSync(path, 'utf-8')
+  }
+  return ""
 }
 
-async function watchStylesheet (path) {
+
+async function parse (contents, globalVars = {}) {
+  let options = { globalVars }
+  let result = await less.render(contents, options)
+  return result.css
+}
+
+
+async function watchStylesheet (path, constants) {
   path = relativePath(path)
   const { watch } = require('fs')
-
-  return watch(path, ( => {
-    console.log("Reloading stylesheet in", path)
-    decorateCustomCSS(path)
+  return watch(path, () => {
+    console.log("Reloading stylesheet in", path) // eslint-disable-line no-console
+    decorateCustomCSS(path, constants)
   })
 }
 
@@ -57,22 +80,47 @@ function getSetting (key, defaultValue='') {
 }
 
 
-async function decorateCustomCSS (stylesheetPath) {
-
-  let css = await read(stylesheetPath)
+async function decorateCustomCSS (stylesheetPaths, constants) {
+  let src = await read(stylesheetPaths)
+  let css = await parse(src, constants)
   let el  = stylesheet('user-defined-styles', css)
   document.body.append(el)
-
 }
 
 
-module.exports.decorateHyper = function (host) {
+function decorateHyper (host) {
 
-  const filePath   = getSetting('stylesheetPath', 'style.css')
+  const filePath   = getSetting('stylesheetPath', '.hyper.less')
   const liveReload = getSetting('stylesheetAutoreload', true)
+  const colors     = getSetting('colors', {})
+  // const css        = getSetting('css', "")
+  // const termCSS    = getSetting('termCSS', "")
+  // console.log(colors, css, termCSS)
+  const globalVars = Object.assign({}, colors, {
+    backgroundColor: getSetting('backgroundColor', 'transparent'),
+    foregroundColor: getSetting('foregroundColor', 'transparent'),
+    borderColor:     getSetting('borderColor',     'transparent'),
+  })
 
   if (liveReload)
-    watchStylesheet(filePath)
-  decorateCustomCSS(filePath)
+    watchStylesheet(filePath, globalVars)
+
+  decorateCustomCSS(filePath, globalVars)
+  window.host = host
+  window.arg  = arguments
+
+  var x=require('electron').remote.getCurrentWindow()
+  x.setVibrancy('dark')
   return host
+}
+
+
+function decorateConfig (config) {
+  return Object.assign({}, config, {})
+}
+
+
+module.exports = {
+  decorateHyper,
+  decorateConfig
 }

@@ -1,0 +1,18 @@
+
+@border-color: mix(@backgroundColor, @borderColor, 30%);
+@divider-margin: 0.5em;
+
+
+.terms_terms {
+  padding: 1em 0.5em 1em 1.5em;
+}
+
+.splitpane_divider_horizontal {
+  border-bottom: 1px solid @border-color;
+  margin: -@divider-margin 0 @divider-margin 0;
+}
+
+.splitpane_divider_vertical {
+  border-right: 1px solid @border-color;
+  margin: 0 @divider-margin 0 -@divider-margin;
+}
